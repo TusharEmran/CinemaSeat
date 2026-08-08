@@ -1,36 +1,46 @@
-# AWS (bonus)
+# AWS Infrastructure Provisioning (Terraform)
 
-The harder path. Attempt it only when the required milestones are solid — a half-built bonus is
-worth less than a finished requirement, and the Deployment criterion scores a Poridhi VM exactly
-the same.
+This section outlines the advanced deployment path utilizing HashiCorp Terraform for AWS infrastructure automation. 
 
-## Suggested minimum
+> [!WARNING]
+> **Prioritize Core Requirements**
+> This path represents a bonus objective. Attempt this implementation only after the primary application functionality and standard deployment requirements are thoroughly validated. An incomplete automated deployment yields a lower evaluation score than a fully functional manual VM deployment.
 
-Keep it small enough to rebuild from scratch inside the lab window.
+## Architectural Minimum Viable Product (MVP)
 
+To ensure the infrastructure remains easily reproducible within the strict 12-hour hackathon window, we strongly recommend adhering to this streamlined architectural blueprint:
+
+```text
+AWS VPC (Default Configuration)
+ └─ EC2 (t3.small)
+    │  - Installs Docker + Docker Compose via User Data
+    │  - Clones this repository
+    │  - Executes the production compose overlay
+    ├─ Security Group
+    │  - Port 80 (HTTP Traffic)
+    │  - Port 22 (SSH Management, restricted to trusted IPs)
+    │  - Port 9000 (Mock Gateway callback exposure)
+    └─ Elastic IP
+       - Associates a static IP to ensure webhook callback URLs survive instance reboots
 ```
-VPC (default is fine)
- └─ EC2 t3.small           docker + compose, this repo, prod overlay
-    ├─ security group      80 open, 22 from your IP, 9000 for the gateway
-    └─ Elastic IP          so the callback URL survives a restart
-```
 
-That is genuinely enough. RDS, ElastiCache and ALB all cost setup time you may not get back, and
-none of them earn a mark on their own.
+This configuration is sufficient for the deployment grading criteria. Complex managed services (e.g., RDS, ElastiCache, Application Load Balancers) require significant provisioning overhead and do not inherently contribute to higher scores in this specific evaluation context.
 
-## Files to add
+## Terraform Project Structure
+
+The automated provisioning relies on the following core files:
 
 | File | Purpose |
 | --- | --- |
-| `main.tf` | VPC lookup, EC2 instance, security group, Elastic IP |
-| `variables.tf` | region, instance type, SSH key name, allowed SSH CIDR |
-| `outputs.tf` | public IP and the URL to paste into README.md |
-| `user-data.sh` | install docker, clone the repo, bring the prod overlay up |
-| `terraform.tfvars.example` | committed; the real `.tfvars` is gitignored |
+| `main.tf` | Core resource definitions: VPC data lookup, EC2 instance provisioning, Security Group configuration, and Elastic IP association. |
+| `variables.tf` | Input declarations: AWS region, instance specifications, SSH key pairs, and authorized CIDR blocks for administrative access. |
+| `outputs.tf` | Post-apply exports: The provisioned Elastic IP and the formatted URL required for the main `README.md` submission. |
+| `user-data.sh` | The bootstrap shell script executed on first boot to install dependencies, retrieve the source code, and initialize the Docker Compose stack. |
+| `terraform.tfvars.example` | Template for environment-specific variables. (The actual `terraform.tfvars` must remain gitignored to prevent credential leakage). |
 
-## Remember
+## Critical DevOps Guidelines
 
-- The AWS account dies with the lab. Do not put anything in it you cannot recreate from here.
-- `user-data.sh` is the difference between "reproducible" and "I remember roughly what I typed".
-- CD needs `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` and `DEPLOY_URL` as GitHub secrets.
-- Never commit `.tfvars` or state. Both are gitignored.
+- **Ephemeral Environment**: The provisioned AWS account will be purged at the end of the hackathon. Under no circumstances should manual configurations be applied to the AWS console; everything must be defined in Code/Terraform.
+- **Reproducible Bootstrapping**: The `user-data.sh` script is the cornerstone of reproducibility. It must fully automate the gap between raw infrastructure and a running application.
+- **CI/CD Secrets**: If configuring automated deployments via GitHub Actions, ensure `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, and `DEPLOY_URL` are strictly configured as encrypted repository secrets.
+- **State Security**: Never commit `.tfvars` files or Terraform state (`.tfstate`) to version control. Both are strictly excluded via `.gitignore`.

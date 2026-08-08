@@ -14,8 +14,8 @@ services:
       LOG_LEVEL: debug
     volumes:
       - ./backend/src:/app/src:ro
-    ports:
-      - "3000:3000"          # bypass the proxy when you need to
+    # ports:
+    #   - "3000:3000"          # bypass the proxy when you need to
     deploy:
       replicas: 1            # one replica is easier to debug
 

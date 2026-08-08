@@ -2,7 +2,7 @@
 
 A highly resilient, high-concurrency movie ticket booking system designed to strictly enforce seat inventory consistency during extreme traffic spikes, ensuring that the same seat is never sold twice.
 
-> **Deployed URL:** `[INSERT YOUR DEPLOYED URL HERE]`
+> **Deployed URL:** `(https://6a1de20ca8dfd8790f50c930_5a61ce39.vscode.poridhi.io/proxy/8080)`
 
 ---
 

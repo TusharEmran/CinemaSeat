@@ -40,7 +40,7 @@ services:
       REDIS_URL: redis://redis:6379
       # Judging hook #2 — read from the environment, never hardcoded.
       HOLD_TTL_SECONDS: ${HOLD_TTL_SECONDS:-120}
-      GATEWAY_BASE_URL: http://gateway:9000
+      GATEWAY_URL: http://gateway:9000
       # Where the gateway calls us back. Must be reachable from the gateway
       # container, so it is a compose service name, not localhost.
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://api:3000}
@@ -81,7 +81,7 @@ services:
       DATABASE_URL: postgres://cinema:cinema@postgres:5432/cinemaseat
       REDIS_URL: redis://redis:6379
       HOLD_TTL_SECONDS: ${HOLD_TTL_SECONDS:-120}
-      GATEWAY_BASE_URL: http://gateway:9000
+      GATEWAY_URL: http://gateway:9000
       SWEEP_INTERVAL_MS: ${SWEEP_INTERVAL_MS:-1000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:

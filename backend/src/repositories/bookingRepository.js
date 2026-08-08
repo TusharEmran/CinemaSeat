@@ -30,7 +30,10 @@ class BookingRepository {
         return res.rows;
     }
 
-    async findById(id) {
+    async findById(idOrRef) {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idOrRef);
+        const condition = isUuid ? 'b.id = $1' : 'b.booking_ref = $1';
+
         const bookingRes = await db.query(
             `SELECT b.*, s.start_time, s.end_time, m.title as movie_title, 
                     t.name as theatre_name, sc.name as screen_name
@@ -39,8 +42,8 @@ class BookingRepository {
              JOIN movies m ON s.movie_id = m.id
              JOIN screens sc ON s.screen_id = sc.id
              JOIN theatres t ON sc.theatre_id = t.id
-             WHERE b.id = $1`,
-            [id]
+             WHERE ${condition}`,
+            [idOrRef]
         );
 
         if (bookingRes.rows.length === 0) return null;
@@ -52,7 +55,7 @@ class BookingRepository {
              JOIN show_seats ss ON bs.show_seat_id = ss.id
              JOIN seats st ON ss.seat_id = st.id
              WHERE bs.booking_id = $1`,
-            [id]
+            [booking.id] // Always use the UUID for the joined table
         );
         booking.seats = seatsRes.rows;
         return booking;

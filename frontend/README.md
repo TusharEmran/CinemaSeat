@@ -1,30 +1,26 @@
-# Frontend
+# Frontend Architecture
 
-Minimal on purpose. The brief says a polished UI earns no extra marks, so this exists to
-demonstrate the path and nothing more:
+The frontend is intentionally designed as a minimal, highly functional Single Page Application (SPA). The primary objective is to demonstrate the resilience and end-to-end functionality of the booking and payment lifecycle without over-investing in complex styling elements.
 
-```
-browse movies → pick showtime → seat map → hold → OTP → pay → confirmed ticket
-```
+**Core User Journey:**
+`Browse Movies → Select Showtime → View Live Seat Map → Hold Seat(s) → Verify OTP → Process Payment → View Confirmed Ticket`
 
-## The five screens
+## Routing Structure
 
-| Route | File | Job |
+| Route | Component | Purpose |
 | --- | --- | --- |
-| `/` | `pages/MoviesPage.tsx` | List movies. |
-| `/movies/:id` | `pages/ShowtimesPage.tsx` | Showtimes for a movie. |
-| `/showtimes/:id` | `pages/SeatMapPage.tsx` | Live seat map, select seats, hold. |
-| `/checkout/:holdId` | `pages/CheckoutPage.tsx` | Hold countdown, OTP, pay. |
-| `/bookings/:ref` | `pages/BookingPage.tsx` | Poll status, show the ticket QR. |
+| `/` | `pages/MoviesPage.tsx` | Displays the available movie catalog. |
+| `/movies/:id` | `pages/ShowtimesPage.tsx` | Lists available showtimes for a selected movie. |
+| `/showtimes/:id` | `pages/SeatMapPage.tsx` | Renders the live seat map, manages seat selection, and initiates holds. |
+| `/checkout/:holdId` | `pages/CheckoutPage.tsx` | Displays the active hold countdown, handles OTP verification, and initiates the payment. |
+| `/bookings/:ref` | `pages/BookingPage.tsx` | Polls the backend for terminal booking status and generates the final ticket QR code. |
 
-## The two things the UI must get right
+## Critical UI/UX Engineering Decisions
 
-**The hold countdown is honest.** It counts down from the `expires_at` the server returned,
-corrected against `server_time`, not against the browser clock. When it hits zero the UI says
-the seat is gone and stops pretending otherwise.
+The frontend implements two key resilience strategies to ensure a consistent user experience during high-concurrency traffic drops:
 
-**Payment is not instant, and the UI says so.** `/pay` returns `202`, not a result — the
-callback is 2–15 seconds behind by specification. `CheckoutPage` shows an explicit
-"confirming your payment" state and polls `GET /api/bookings/:ref` until it reaches a terminal
-status. It never claims a booking is confirmed before the server says it is. That is precisely
-the bug in Zayan's night: the app said the seat was his, and a refresh showed it gone.
+1. **Authoritative Hold Countdowns** 
+   The hold countdown timer is strictly synchronized against the `server_time` and `expires_at` timestamps provided by the backend API. It does not rely on the local browser clock, preventing timezone mismatches or client-side manipulation. When the server-defined TTL reaches zero, the UI immediately invalidates the session and marks the seat as unavailable.
+
+2. **Asynchronous Payment State Management** 
+   Because the external payment gateway is inherently asynchronous (and deliberately delayed by 2–15 seconds), the frontend expects a `202 Accepted` response from the `/pay` endpoint rather than immediate confirmation. The `CheckoutPage` intelligently transitions into an explicit "confirming your payment" polling state. It repeatedly queries `GET /api/bookings/:ref` until a terminal status (`CONFIRMED` or `PAYMENT_FAILED`) is reached. This architectural choice prevents "phantom bookings" (e.g., the UI claiming a seat is booked before the database confirms it).

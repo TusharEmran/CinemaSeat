@@ -1,27 +1,47 @@
-# Load tests
+# Load Testing Strategy
 
-**Run these from your host or laptop, never from inside the stack.** If k6 and the API fight
-over the same two vCPUs, you are measuring your load generator, not your service.
+To accurately measure the performance and concurrency handling of the CinemaSeat application, it is critical that load testing scripts are executed from an isolated host machine (e.g., your local laptop). 
+
+> [!WARNING]
+> **Avoid Resource Contention**
+> Do not run load generation tools from within the same virtual machine or Docker host as the application stack. If the load generator and the API contend for the same CPU resources, the resulting metrics will reflect the limitations of your testing environment rather than the capacity of the service.
+
+## Required Setup
+
+We utilize [Grafana k6](https://grafana.com/docs/k6/latest/set-up/install-k6/) for load generation. Please ensure it is installed on your execution machine before proceeding.
+
+## Testing Scenarios
+
+### Scenario A: High Concurrency Contest (Required)
+Simulates a high-traffic rush where 100 concurrent requests attempt to hold the exact same seat. This scenario validates our strict database concurrency guarantees.
+**Expected Result**: Exactly 1 successful hold (`201 Created`), 99 clean rejections (`409 Conflict`), and 0 oversold seats.
 
 ```bash
-# Scenario A — required. Exactly one winner, 99 clean rejections, 0 oversell.
 k6 run -e BASE_URL=http://localhost:8080 -e SEAT_LABEL=F12 load/scenario-a-one-seat.js
-
-# Scenario B — required. Needs a short TTL.
-HOLD_TTL_SECONDS=15 docker compose up -d --build
-BASE_URL=http://localhost:8080 ./load/scenario-b-hold-expiry.sh
-
-# Scenario C — bonus. Point it at the deployed URL.
-k6 run -e BASE_URL=https://your-deployed-url load/scenario-c-ramp.js
 ```
 
-Install k6: <https://grafana.com/docs/k6/latest/set-up/install-k6/>
+### Scenario B: Abandoned Hold Expiration (Required)
+Validates the background reconciliation processes by simulating a user abandoning a hold.
+**Prerequisite**: The stack must be running with a shortened Time-To-Live (TTL) for testing.
 
-## What to record
+```bash
+HOLD_TTL_SECONDS=15 docker compose up -d --build
+BASE_URL=http://localhost:8080 ./load/scenario-b-hold-expiry.sh
+```
 
-Raw k6 output is not the deliverable. Write the summary into `docs/proof/` — requests sent,
-successes, rejections, oversell count, and for Scenario C the p95 curve plus **your explanation
-of the bottleneck**. The brief is explicit that the explanation is what earns the marks and that
-raw throughput is not compared between teams.
+### Scenario C: Capacity Breakpoint Analysis (Bonus)
+A progressive ramp-up test designed to identify the maximum throughput limit of the deployed infrastructure.
+**Note**: Execute this against the live deployed URL.
 
-Keep raw dumps out of git (`load/results/` is gitignored); commit the written summary instead.
+```bash
+k6 run -e BASE_URL=https://[YOUR_DEPLOYED_URL] load/scenario-c-ramp.js
+```
+
+## Reporting Deliverables
+
+Do not commit raw k6 JSON/terminal output dumps to the repository (the `load/results/` directory is `.gitignore`'d). Instead, you must synthesize the raw data into a professional written report.
+
+The final deliverables should be placed in the `docs/proof/` directory and must include:
+1. Total requests sent, successful holds, rejected conflicts, and the total count of oversold seats (which must be 0).
+2. For Scenario C, include the `p95` latency curve.
+3. **Crucial**: Provide a detailed architectural explanation of the identified system bottleneck. Evaluation rubrics state that the quality of the bottleneck analysis is graded, rather than the raw throughput numbers.

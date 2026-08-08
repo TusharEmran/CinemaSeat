@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CinemaSeat — Premium Ticket Booking & Concurrency Tester</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-container">
+            <a href="#" class="logo">
+                <div class="logo-icon">🎬</div>
+                <span>CinemaSeat</span>
+            </a>
+
+            <nav class="nav-tabs">
+                <button class="nav-tab active" onclick="switchTab('browse')">Movies</button>
+                <button class="nav-tab" onclick="switchTab('booking')">Seat Map & Booking</button>
+                <button class="nav-tab" onclick="switchTab('history')">My Bookings</button>
+                <button class="nav-tab" onclick="switchTab('otp')">OTP & Webhooks</button>
+            </nav>
+
+            <div class="status-bar">
+                <div class="status-badge" id="api-status">
+                    <span class="status-dot"></span> API: Connected
+                </div>
+                <div class="status-badge" id="gateway-status" style="border-color: rgba(6, 182, 212, 0.3); color: #06b6d4;">
+                    <span class="status-dot" style="background-color: #06b6d4; box-shadow: 0 0 8px #06b6d4;"></span> Gateway: :9000
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- TAB 1: BROWSE MOVIES -->
+        <section id="tab-browse" class="tab-content active">
+            <div class="hero-banner">
+                <div class="hero-content">
+                    <span class="hero-badge">Now Showing</span>
+                    <h1 class="hero-title">Experience Movies in IMAX & 4DX</h1>
+                    <p class="hero-desc">Select your showtime, lock your physical seats in real time with PostgreSQL atomic holds, and complete instant payments.</p>
+                    <button class="btn btn-primary" style="width: auto;" onclick="switchTab('booking')">
+                        🚀 Reserve Seats Now
+                    </button>
+                </div>
+            </div>
+
+            <h2 class="section-title">🔥 Featured Movies</h2>
+            <p class="section-subtitle">Select a movie to browse showtimes and seating map</p>
+
+            <div class="movie-grid" id="movie-grid">
+                <!-- Dynamically populated -->
+            </div>
+        </section>
+
+        <!-- TAB 2: INTERACTIVE SEAT MAP & BOOKING -->
+        <section id="tab-booking" class="tab-content" style="display: none;">
+            <div style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h2 class="section-title" id="selected-show-title">Inception: Redux (IMAX Hall 1)</h2>
+                    <p class="section-subtitle" style="margin-bottom: 0;" id="selected-show-time">Today • Starts in 2 hours • Price: ৳450/seat</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <select id="show-select" class="form-select" style="min-width: 220px;" onchange="onShowSelectChange()">
+                        <!-- Shows dropdown -->
+                    </select>
+                    <button class="btn btn-secondary" style="width: auto;" onclick="loadShowSeats()">🔄 Refresh Map</button>
+                </div>
+            </div>
+
+            <div class="booking-container">
+                <!-- Left: Seat Map -->
+                <div class="seatmap-section">
+                    <div class="screen-container">
+                        <div class="screen-curved"></div>
+                        <div class="screen-text">SCREEN THIS WAY</div>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="seat-legend">
+                        <div class="legend-item"><div class="seat-box available"></div> Available</div>
+                        <div class="legend-item"><div class="seat-box selected"></div> Selected</div>
+                        <div class="legend-item"><div class="seat-box held"></div> Held (10m)</div>
+                        <div class="legend-item"><div class="seat-box booked"></div> Booked</div>
+                        <div class="legend-item"><div class="seat-box vip"></div> VIP Seat</div>
+                    </div>
+
+                    <!-- Interactive Seat Grid -->
+                    <div class="seat-grid" id="seat-grid">
+                        <!-- Seats populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Right: Checkout Sidebar Panel -->
+                <div class="checkout-panel">
+                    <div class="checkout-header">
+                        <h3>Booking Summary</h3>
+                        <p style="font-size: 0.85rem; color: var(--text-muted);">Real-time Atomic Seat Reservation</p>
+                    </div>
+
+                    <div class="summary-row">
+                        <span>Selected Seats:</span>
+                        <div class="badge-list" id="selected-seats-badges">
+                            <span style="color: var(--text-dim); font-size: 0.85rem;">None</span>
+                        </div>
+                    </div>
+
+                    <div class="summary-row">
+                        <span>Price per seat:</span>
+                        <span id="price-per-seat">৳450</span>
+                    </div>
+
+                    <div class="summary-row total">
+                        <span>Total Amount:</span>
+                        <span id="total-amount-display" style="color: var(--secondary);">৳0</span>
+                    </div>
+
+                    <div id="hold-status-container" style="display: none; margin: 1rem 0; padding: 0.75rem; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.85rem; color: var(--accent-gold); font-weight: 700;">⏱️ Hold Expires In:</span>
+                            <span id="hold-countdown" style="font-weight: 800; font-size: 1.1rem; color: #fff;">10:00</span>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;" id="booking-ref-display">Ref: bk_...</div>
+                    </div>
+
+                    <button class="btn btn-primary" id="btn-hold-seats" style="margin-top: 1rem;" onclick="handleHoldSeats()">
+                        🔒 Hold Selected Seats (10 mins)
+                    </button>
+
+                    <button class="btn btn-success" id="btn-checkout-payment" style="margin-top: 0.75rem; display: none;" onclick="openPaymentModal()">
+                        💳 Proceed to Payment
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: MY BOOKINGS HISTORY -->
+        <section id="tab-history" class="tab-content" style="display: none;">
+            <h2 class="section-title">🎟️ My Bookings & History</h2>
+            <p class="section-subtitle">Real-time status of your holds, confirmed bookings, and cancellations</p>
+
+            <div id="history-container" style="display: flex; flex-direction: column; gap: 1rem;">
+                <!-- Populated dynamically -->
+            </div>
+        </section>
+
+        <!-- TAB 4: OTP & WEBHOOKS TESTER -->
+        <section id="tab-otp" class="tab-content" style="display: none;">
+            <h2 class="section-title">📲 OTP & Webhook Integration Tester</h2>
+            <p class="section-subtitle">Test SMS OTP verification flows and simulated gateway callbacks</p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="seatmap-section">
+                    <h3>Send & Verify OTP</h3>
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label class="form-label">Phone Number</label>
+                        <input type="text" id="otp-phone" class="form-input" value="01700000000">
+                    </div>
+                    <button class="btn btn-primary" onclick="handleSendOtp()">📩 Send OTP</button>
+
+                    <div id="otp-verify-section" style="margin-top: 1.5rem; display: none;">
+                        <div class="form-group">
+                            <label class="form-label">Reference Ref</label>
+                            <input type="text" id="otp-ref-input" class="form-input" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">6-Digit Code (Simulated default: 123456)</label>
+                            <input type="text" id="otp-code-input" class="form-input" value="123456">
+                        </div>
+                        <button class="btn btn-success" onclick="handleVerifyOtp()">✅ Verify OTP Code</button>
+                    </div>
+                </div>
+
+                <div class="seatmap-section">
+                    <h3>Simulated Gateway Testing Header Overrides</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                        Test system resilience against gateway failures, timeouts, duplicate callbacks, and race conditions.
+                    </p>
+                    <div class="form-group">
+                        <label class="form-label">X-Mock-Mode Header</label>
+                        <select id="mock-mode-select" class="form-select">
+                            <option value="deterministic">deterministic (Fast test mode)</option>
+                            <option value="random">random (2% 500, 10% fail, 8% dup, 2-15s delay)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">X-Mock-Force Header</label>
+                        <select id="mock-force-select" class="form-select">
+                            <option value="none">none (Default Gateway behavior)</option>
+                            <option value="success">success (Force Payment Success)</option>
+                            <option value="fail">fail (Force Payment Failure & Seat Release)</option>
+                            <option value="duplicate">duplicate (Force 8% Duplicate Callbacks)</option>
+                            <option value="race">race (Send Webhook BEFORE /charge HTTP response)</option>
+                            <option value="timeout">timeout (Simulate Gateway 500 Error)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- PAYMENT MODAL -->
+    <div class="modal-overlay" id="payment-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>💳 Gateway Payment Checkout</h3>
+                <button class="modal-close" onclick="closePaymentModal()">&times;</button>
+            </div>
+
+            <div class="summary-row">
+                <span>Booking Reference:</span>
+                <span id="modal-booking-ref" style="font-weight: 700; color: var(--primary);">bk_...</span>
+            </div>
+            <div class="summary-row">
+                <span>Total Amount:</span>
+                <span id="modal-amount" style="font-weight: 800; font-size: 1.2rem; color: var(--secondary);">৳450</span>
+            </div>
+
+            <div class="form-group" style="margin-top: 1.25rem;">
+                <label class="form-label">Idempotency-Key</label>
+                <input type="text" id="idempotency-key-input" class="form-input" readonly>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Payment Simulation Behavior</label>
+                <select id="payment-behavior-select" class="form-select">
+                    <option value="success">Success (Confirm Booking & Issue QR Pass)</option>
+                    <option value="fail">Fail (Decline Payment & Release Seats)</option>
+                    <option value="duplicate">Duplicate Webhook Callback Test</option>
+                    <option value="race">Callback Before Charge Response Race Condition</option>
+                </select>
+            </div>
+
+            <button class="btn btn-success" style="margin-top: 1rem;" onclick="executePaymentCharge()">
+                ⚡ Pay Now & Complete Booking
+            </button>
+        </div>
+    </div>
+
+    <!-- TICKET PASS CONFIRMATION MODAL -->
+    <div class="modal-overlay" id="ticket-modal">
+        <div class="modal-card" style="text-align: center;">
+            <div class="modal-header">
+                <h3>🎉 Booking Confirmed!</h3>
+                <button class="modal-close" onclick="closeTicketModal()">&times;</button>
+            </div>
+
+            <div class="ticket-pass">
+                <h4 style="color: var(--secondary); margin-bottom: 0.25rem;" id="ticket-movie-title">Inception: Redux</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted);" id="ticket-show-details">Hall 1 (IMAX) • Today 7:00 PM</p>
+
+                <div class="ticket-qr" id="qrcode"></div>
+
+                <div style="display: flex; justify-content: space-around; margin-top: 1rem; border-top: 1px dashed var(--border-glass); padding-top: 0.75rem;">
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-dim);">SEATS</div>
+                        <div style="font-weight: 800; font-size: 1.1rem; color: #fff;" id="ticket-seats">A1, A2</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-dim);">BOOKING REF</div>
+                        <div style="font-weight: 800; font-size: 1.1rem; color: var(--primary);" id="ticket-ref">bk_123</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="closeTicketModal()">Close Pass</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

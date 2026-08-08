@@ -8,6 +8,6 @@ RUN npm ci --only=production
 
 COPY . .
 
-EXPOSE 3000
+EXPOSE 9000
 
-CMD ["npm", "start"]
+CMD ["npm", "run", "gateway"]

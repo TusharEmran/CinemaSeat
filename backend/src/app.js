@@ -13,6 +13,7 @@ const otpRoutes = require('./routes/otpRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 
 const app = express();
+app.set('trust proxy', 1);
 
 app.use(helmet({
     contentSecurityPolicy: false, // Allow CDNs & inline scripts for demo UI

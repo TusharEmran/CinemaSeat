@@ -18,7 +18,9 @@ import type {
   Showtime,
 } from './types';
 
-const BASE = '/api';
+const BASE = typeof window === 'undefined'
+  ? (process.env.INTERNAL_API_URL || 'http://api:3000/api')
+  : '/api';
 
 export class ApiRequestError extends Error {
   readonly status: number;

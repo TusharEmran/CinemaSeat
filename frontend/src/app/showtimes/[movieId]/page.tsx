@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 import { ApiRequestError, getMovies, getShowtimes } from '../../../api/client';
 import { getMockMovies, getMockShowtimes } from '../../../api/mock';
 import type { Movie, Showtime } from '../../../api/types';

@@ -22,7 +22,10 @@ async function runSeeds() {
 if (require.main === module) {
     runSeeds()
         .then(() => process.exit(0))
-        .catch(() => process.exit(1));
+        .catch((err) => {
+            console.error('Seed execution failed:', err);
+            process.exit(1);
+        });
 }
 
 module.exports = runSeeds;

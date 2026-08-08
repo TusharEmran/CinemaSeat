@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 import { ApiRequestError, getSeatMap, getShowtimes } from '../../../api/client';
 import { getMockSeatMap, getMockShowtimes } from '../../../api/mock';
 import type { SeatMap, Showtime } from '../../../api/types';

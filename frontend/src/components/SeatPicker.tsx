@@ -126,15 +126,15 @@ export function SeatPicker({ initialSeatMap }: { initialSeatMap: SeatMap }) {
       userRef: 'web-anon',
     });
 
-    if (result.held) {
+    if (result.held === true) {
       router.push(`/checkout/${result.hold.hold_id}`);
       return;
     }
 
-    const conflict = result.conflict as ApiError;
-    const conflicting = new Set(conflict.conflicting_seats ?? []);
+    const conflictErr = (result as { held: false; conflict: ApiError }).conflict;
+    const conflictingSeats: string[] = conflictErr.conflicting_seats ?? [];
+    const conflicting = new Set<string>(conflictingSeats);
     setState((prev) => {
-      if (!prev) return prev;
       const remaining = new Set<string>();
       for (const label of prev.selected) {
         if (!conflicting.has(label)) remaining.add(label);
@@ -144,7 +144,7 @@ export function SeatPicker({ initialSeatMap }: { initialSeatMap: SeatMap }) {
         holding: false,
         conflict: {
           seats: Array.from(conflicting),
-          message: conflict.message,
+          message: conflictErr.message,
         },
         selected: remaining,
       };

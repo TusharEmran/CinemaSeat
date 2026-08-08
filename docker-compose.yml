@@ -32,6 +32,7 @@ services:
     build:
       context: ./backend
       target: runtime
+    image: cinemaseat-api:latest
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -43,8 +44,8 @@ services:
       # Where the gateway calls us back. Must be reachable from the gateway
       # container, so it is a compose service name, not localhost.
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://api:3000}
-      GATEWAY_TIMEOUT_MS: ${GATEWAY_TIMEOUT_MS:-3000}
-      GATEWAY_CALLBACK_SECRET: ${GATEWAY_CALLBACK_SECRET:-dev-callback-secret}
+      GATEWAY_SECRET: ${GATEWAY_SECRET:-z2p-2026-secret}
+      GATEWAY_CALLBACK_SECRET: ${GATEWAY_CALLBACK_SECRET:-z2p-2026-secret}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-300}
     depends_on:
@@ -73,7 +74,8 @@ services:
     build:
       context: ./backend
       target: runtime
-    command: ["node", "dist/worker.js"]
+    image: cinemaseat-api:latest
+    command: ["node", "src/workers/worker.js"]
     environment:
       NODE_ENV: production
       DATABASE_URL: postgres://cinema:cinema@postgres:5432/cinemaseat
@@ -98,7 +100,8 @@ services:
     build:
       context: ./backend
       target: runtime
-    command: ["node", "dist/db/bootstrap.js"]
+    image: cinemaseat-migrate:latest
+    command: ["sh", "-c", "node database/runMigrations.js && node database/runSeeds.js"]
     environment:
       DATABASE_URL: postgres://cinema:cinema@postgres:5432/cinemaseat
       SEED_ON_BOOT: ${SEED_ON_BOOT:-true}
@@ -112,7 +115,7 @@ services:
     build:
       context: ./frontend
       args:
-        # Same-origin through the proxy — the frontend never learns the API host.
+        # Same-origin through the proxy — the frontend never learns the API host
         VITE_API_BASE_URL: /api
     restart: unless-stopped
 
@@ -151,6 +154,8 @@ services:
     image: asifmahmoud414/mock-gateway:latest
     ports:
       - "${GATEWAY_PORT:-9000}:9000"
+    environment:
+      GATEWAY_SECRET: ${GATEWAY_SECRET:-z2p-2026-secret}
     restart: unless-stopped
 
 volumes:

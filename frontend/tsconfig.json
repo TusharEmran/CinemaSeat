@@ -8,6 +8,10 @@
     ],
     "allowJs": true,
     "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "disableReferencedProjectLoad": true,
+    "disableSizeLimit": true,
+    "types": [],
     "strict": false,
     "noEmit": true,
     "incremental": true,
@@ -32,6 +36,7 @@
     "**/*.tsx"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "**/node_modules/**"
   ]
 }

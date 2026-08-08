@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — CinemaSeat (White / Light Theme).
+ *
+ * Clean alabaster canvas with deep navy text and a rich coral-rose accent.
+ * Crisp cards float with soft shadows on a warm off-white ground. The palette
+ * is inspired by modern cinema lobbies — clean, airy, premium.
+ *
+ * Defined as @theme tokens so Tailwind v4 utilities (`bg-bg`, `text-ink`,
+ * `text-muted`, `border-line`, `bg-accent`) compose naturally.
+ */
+
+@theme {
+  --color-bg: #fafafa;            /* warm off-white canvas */
+  --color-surface: #ffffff;       /* card background — pure white */
+  --color-surface-hi: #f3f4f6;   /* card hover — light gray */
+  --color-line: #e5e7eb;         /* hairlines — gray-200 */
+  --color-ink: #111827;          /* primary text — near-black */
+  --color-muted: #6b7280;        /* secondary text — gray-500 */
+  --color-accent: #e11d48;       /* rose-600 — vibrant cinema red */
+  --color-accent-hi: #be123c;    /* rose-700 — hover */
+  --color-accent-soft: #fff1f2;  /* rose-50 — soft tint bg */
+  --color-danger: #dc2626;
+  --color-success: #16a34a;
+
+  --font-display: 'Outfit', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
+  --shadow-card-hover: 0 8px 30px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-float: 0 20px 60px -12px rgba(0, 0, 0, 0.12);
+}
+
+/* Base reset */
+html,
+body {
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Visible focus ring */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Honor reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Movie poster fallback */
+.poster-fallback {
+  background:
+    radial-gradient(ellipse at top, rgba(225, 29, 72, 0.08), transparent 60%),
+    radial-gradient(ellipse at bottom, rgba(0, 0, 0, 0.02), transparent 60%),
+    var(--color-surface-hi);
+}
+
+/* The hero's atmospheric backdrop — light version */
+.hero-vignette {
+  background:
+    linear-gradient(
+      to right,
+      rgba(250, 250, 250, 0.95) 0%,
+      rgba(250, 250, 250, 0.78) 35%,
+      rgba(250, 250, 250, 0.45) 60%,
+      rgba(250, 250, 250, 0.2) 100%
+    ),
+    linear-gradient(to top, var(--color-bg) 0%, transparent 30%);
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Glassmorphism card variation — light */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Subtle shimmer animation for loading states */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #e11d48, #f43f5e, #fb7185);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

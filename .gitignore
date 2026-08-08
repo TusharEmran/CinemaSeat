@@ -22,6 +22,9 @@ Thumbs.db
 load/results/*
 !load/results/.gitkeep
 
+# Skills (project-local installs)
+.claude/skills/
+
 # Terraform
 infra/terraform/.terraform/
 *.tfstate

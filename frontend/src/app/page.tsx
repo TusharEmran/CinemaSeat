@@ -1,37 +1,26 @@
 import Link from 'next/link';
 
 import { ApiRequestError, getMovies } from '../api/client';
-import { getMockMovies, getMockSynopsis } from '../api/mock';
 import type { Movie } from '../api/types';
 
 import { Hero } from '../components/Hero';
 import { MovieSlider } from '../components/MovieSlider';
 
 /*
- * Home page -- the cinema's marquee. Full-bleed hero with the featured film's
- * poster as cover, then an animated sliding carousel of all films.
- * Server-rendered so the FCP includes real poster imagery, not a spinner.
+ * Home page -- full-bleed hero with featured film, then automated movie slider.
+ * Directly calls live backend APIs.
  */
-const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== 'false';
-
 export default async function MoviesPage() {
   let movies: Movie[] = [];
   let loadError: string | null = null;
-  let source: 'live' | 'mock' | 'none' = 'none';
 
-  if (USE_MOCKS) {
-    movies = getMockMovies();
-    source = 'mock';
-  } else {
-    try {
-      movies = await getMovies();
-      source = movies.length > 0 ? 'live' : 'none';
-    } catch (err) {
-      loadError = err instanceof ApiRequestError ? err.message : 'Could not reach the cinema.';
-    }
+  try {
+    movies = await getMovies();
+  } catch (err) {
+    loadError = err instanceof ApiRequestError ? err.message : 'Could not connect to backend API.';
   }
 
-  if (loadError) {
+  if (loadError && movies.length === 0) {
     return <LoadError message={loadError} />;
   }
 
@@ -39,20 +28,18 @@ export default async function MoviesPage() {
     return <EmptyState />;
   }
 
-  const [featured, ...rest] = movies;
-  const synopsis = USE_MOCKS ? getMockSynopsis(featured.id) : undefined;
+  const [featured] = movies;
 
   return (
     <>
-      <Hero movie={featured} synopsis={synopsis} />
+      <Hero movie={featured} synopsis={featured.description || 'Experience the ultimate cinematic event on the big screen.'} />
 
-      {/* Now Showing — Animated Slider */}
+      {/* Now Showing -- Animated Slider */}
       <section
         id="now-showing"
         aria-labelledby="now-showing-title"
         className="relative py-16 sm:py-24"
       >
-        {/* Section header */}
         <header className="mb-8 mx-auto max-w-7xl px-5 sm:px-8 flex items-end justify-between gap-4">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
@@ -72,21 +59,15 @@ export default async function MoviesPage() {
             <p className="text-sm text-muted">
               {movies.length} {movies.length === 1 ? 'film' : 'films'}
             </p>
-            {source === 'mock' && <MockBadge />}
+            <LiveBadge />
           </div>
         </header>
 
-        {/* Movie slider with all movies (including featured for full browsing) */}
         <MovieSlider movies={movies} />
       </section>
 
-      {/* How it Works Section */}
       <HowItWorks />
-
-      {/* Stats / Social Proof Banner */}
-      <StatsBanner />
-
-      {source === 'mock' && <MockNotice />}
+      <StatsBanner movieCount={movies.length} />
     </>
   );
 }
@@ -118,7 +99,6 @@ function HowItWorks() {
       aria-labelledby="how-it-works-title"
       className="relative border-t border-line"
     >
-      {/* Subtle background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-white via-slate-50/50 to-white" aria-hidden="true" />
 
       <div className="relative mx-auto max-w-7xl px-5 sm:px-8 py-16 sm:py-24">
@@ -147,7 +127,6 @@ function HowItWorks() {
               key={step.title}
               className="group relative rounded-2xl border border-line bg-white p-7 sm:p-8 transition-all duration-300 hover:border-accent/30 hover:shadow-[0_12px_40px_rgba(225,29,72,0.06)]"
             >
-              {/* Step number accent */}
               <span className="absolute -top-3 left-6 inline-flex items-center justify-center h-6 w-6 rounded-full bg-accent text-white text-xs font-bold">
                 {i + 1}
               </span>
@@ -169,12 +148,12 @@ function HowItWorks() {
 
 /* -- Stats Banner ---------------------------------------------------------- */
 
-function StatsBanner() {
+function StatsBanner({ movieCount }: { movieCount: number }) {
   const stats = [
-    { value: '8', label: 'Films Now Showing' },
+    { value: String(movieCount), label: 'Films Now Showing' },
     { value: '3', label: 'Screens Available' },
-    { value: '112', label: 'Seats per Screen' },
-    { value: '5 min', label: 'Hold Window' },
+    { value: '20+', label: 'Seats per Screen' },
+    { value: '10 min', label: 'Hold Window' },
   ];
 
   return (
@@ -197,35 +176,15 @@ function StatsBanner() {
   );
 }
 
-/* -- Badges / Notices ------------------------------------------------------ */
-
-function MockBadge() {
+function LiveBadge() {
   return (
     <span
       aria-hidden="true"
-      className="inline-flex items-center rounded-full bg-accent/10 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-accent font-semibold"
+      className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-emerald-700 font-semibold ring-1 ring-emerald-200"
     >
-      Demo
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+      Live API
     </span>
-  );
-}
-
-function MockNotice() {
-  return (
-    <div className="border-t border-line bg-slate-50/60">
-      <div className="mx-auto max-w-7xl px-5 sm:px-8 py-6">
-        <p className="text-xs sm:text-sm text-muted text-center">
-          <span className="inline-block rounded-full bg-accent/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-accent mr-2 align-middle font-semibold">
-            Mock
-          </span>
-          Sample catalog for the UI demo. Set{' '}
-          <code className="rounded bg-surface-hi px-1.5 py-0.5 font-mono text-[11px] text-ink">
-            NEXT_PUBLIC_USE_MOCKS=false
-          </code>{' '}
-          to use the live API.
-        </p>
-      </div>
-    </div>
   );
 }
 
@@ -240,9 +199,9 @@ function LoadError({ message }: { message: string }) {
           <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
       </div>
-      <p className="text-xs uppercase tracking-[0.25em] text-danger mb-2">Cinema is offline</p>
+      <p className="text-xs uppercase tracking-[0.25em] text-danger mb-2">Cinema API Error</p>
       <h1 className="font-display text-3xl text-ink mb-3 font-bold">
-        We can&apos;t reach the box office
+        We can&apos;t reach the box office API
       </h1>
       <p className="text-muted mb-8">{message}</p>
       <a
@@ -264,16 +223,14 @@ function EmptyState() {
           <path d="M7 4v16M17 4v16M2 9h20M2 15h20" stroke="currentColor" strokeWidth="0.8" />
         </svg>
       </div>
-      <p className="text-xs uppercase tracking-[0.25em] text-accent mb-2">No films right now</p>
-      <h1 className="font-display text-3xl text-ink mb-3 font-bold">Nothing on this week</h1>
+      <p className="text-xs uppercase tracking-[0.25em] text-accent mb-2">No films found</p>
+      <h1 className="font-display text-3xl text-ink mb-3 font-bold">Nothing in database</h1>
       <p className="text-muted">
-        The catalog is empty. New showtimes will appear here as soon as they are scheduled.
+        The backend API returned an empty list. New showtimes will appear here as soon as they are seeded.
       </p>
     </div>
   );
 }
-
-/* -- Step Icons ------------------------------------------------------------ */
 
 function BrowseIcon() {
   return (

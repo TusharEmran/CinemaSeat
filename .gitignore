@@ -22,6 +22,12 @@ Thumbs.db
 load/results/*
 !load/results/.gitkeep
 
+# Next.js build cache & temporary files
+.next/
+frontend/.next/
+.puku/
+*.tsbuildinfo
+
 # Skills (project-local installs)
 .claude/skills/
 

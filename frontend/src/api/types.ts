@@ -1,14 +1,9 @@
 /**
- * Response types. Keep these in step with backend/src/modules/[module]/schemas.ts and
- * with the request shapes documented in README.md -- judges test against what
- * the README says, so a drift there is a real failure, not a docs nit.
+ * Response types. Keep these in step with backend schemas.
  *
- * Field names are snake_case because that is what the wire carries. Renaming
- * them to camelCase here would mean every one of these types is a lie about the
- * JSON it describes, and the mapping layer would be one more place to drift.
+ * Field names are snake_case because that is what the wire carries.
  *
- * Money is integer minor units everywhere. There is no `number` in this file
- * that means "taka" -- 45000 is 450.00 BDT.
+ * Money is integer minor units everywhere (45000 is 450.00 BDT).
  */
 
 export type SeatStatus = 'AVAILABLE' | 'HELD' | 'BOOKED';
@@ -36,6 +31,8 @@ export interface Movie {
   rating: string;
   runtime_minutes?: number;
   poster_url?: string;
+  description?: string;
+  genre?: string;
 }
 
 export interface Showtime {
@@ -64,6 +61,8 @@ export interface HeldSeat {
 
 export interface Hold {
   hold_id: string;
+  booking_id?: string;
+  booking_ref?: string;
   showtime_id: string;
   seats: HeldSeat[];
   total_minor: number;
@@ -72,10 +71,6 @@ export interface Hold {
   hold_ttl_seconds: number;
 }
 
-/**
- * A booking is terminal once it leaves PENDING_PAYMENT. `isTerminal` below is
- * the single place that decides when polling stops -- do not inline the check.
- */
 export type BookingStatus =
   | 'PENDING_PAYMENT'
   | 'CONFIRMED'
@@ -88,6 +83,7 @@ export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'REFUNDED';
 
 export interface Booking {
   booking_ref: string;
+  booking_id?: string;
   status: BookingStatus;
   payment_status: PaymentStatus;
   showtime_id: string;
@@ -97,7 +93,6 @@ export interface Booking {
   seats: HeldSeat[];
   total_minor: number;
   currency: string;
-  /** Present only on CONFIRMED. A data: URL, an https URL, or a raw payload string. */
   ticket_qr?: string;
   created_at?: string;
   server_time?: string;

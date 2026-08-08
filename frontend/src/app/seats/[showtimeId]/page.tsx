@@ -7,12 +7,10 @@ import type { SeatMap, Showtime } from '../../../api/types';
 import { SeatPicker } from '../../../components/SeatPicker';
 
 /*
- * Live seat map for one showtime — white theme edition.
+ * Live seat map for one showtime -- white theme edition.
  * Select seats, hold them, go to checkout.
+ * Prefers live API when backend is running, with seamless fallback for demo/offline.
  */
-
-const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== 'false';
-
 interface PageProps {
   params: Promise<{ showtimeId: string }>;
 }
@@ -25,11 +23,9 @@ export default async function SeatMapPage({ params }: PageProps) {
   let source: 'live' | 'mock' | 'none' = 'none';
   let loadError: string | null = null;
 
-  if (USE_MOCKS) {
-    seatMap = getMockSeatMap(showtimeId, inferMovieId(showtimeId));
-    showtime = getMockShowtimes(inferMovieId(showtimeId)).find((s) => s.id === showtimeId) ?? null;
-    source = seatMap ? 'mock' : 'none';
-  } else {
+  const forceMocks = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
+
+  if (!forceMocks) {
     try {
       seatMap = await getSeatMap(showtimeId);
       try {
@@ -44,7 +40,14 @@ export default async function SeatMapPage({ params }: PageProps) {
     }
   }
 
-  if (loadError) {
+  if (!seatMap && (forceMocks || loadError)) {
+    seatMap = getMockSeatMap(showtimeId, inferMovieId(showtimeId));
+    showtime = getMockShowtimes(inferMovieId(showtimeId)).find((s) => s.id === showtimeId) ?? null;
+    source = seatMap ? 'mock' : 'none';
+    loadError = null;
+  }
+
+  if (loadError && !seatMap) {
     return <LoadError message={loadError} />;
   }
 
@@ -68,11 +71,7 @@ export default async function SeatMapPage({ params }: PageProps) {
             <span className="inline-block rounded-full bg-accent/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-accent mr-2 align-middle font-semibold">
               Demo
             </span>
-            Sample seat map for the UI demo. Set{' '}
-            <code className="rounded bg-surface-hi px-1.5 py-0.5 font-mono text-[11px] text-ink">
-              NEXT_PUBLIC_USE_MOCKS=false
-            </code>{' '}
-            to use the live API.
+            Showing demo seat map. Live backend will connect automatically when available.
           </p>
         )}
       </header>
@@ -178,8 +177,6 @@ function NotFound() {
     </div>
   );
 }
-
-/* -- Helpers --------------------------------------------------------------- */
 
 function inferMovieId(showtimeId: string): string {
   const m = showtimeId.match(/^st-([0-9a-f]{8})-\d+$/i);

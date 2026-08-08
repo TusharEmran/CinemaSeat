@@ -2,11 +2,6 @@ import Link from 'next/link';
 
 import type { Movie } from '../api/types';
 
-/*
- * Full-bleed cinematic hero — the poster fills the entire hero as a
- * background cover image. Text overlays on a gradient scrim for readability
- * against the white theme.
- */
 export function Hero({ movie, synopsis }: { movie: Movie; synopsis?: string }) {
   return (
     <section

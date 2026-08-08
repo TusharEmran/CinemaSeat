@@ -7,12 +7,10 @@ import type { Movie, Showtime } from '../../../api/types';
 import { formatMinor } from '../../../api/types';
 
 /*
- * Showtimes for one movie — white theme edition.
+ * Showtimes for one movie -- white theme edition.
  * Grouped by theatre and screen with clean cards.
+ * Prefers live API when backend is running, with seamless fallback for demo/offline.
  */
-
-const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== 'false';
-
 interface PageProps {
   params: Promise<{ movieId: string }>;
 }
@@ -25,24 +23,34 @@ export default async function ShowtimesPage({ params }: PageProps) {
   let source: 'live' | 'mock' | 'none' = 'none';
   let loadError: string | null = null;
 
-  if (USE_MOCKS) {
-    movie = getMockMovies().find((m) => m.id === movieId) ?? null;
-    showtimes = movie ? getMockShowtimes(movieId) : [];
-    source = movie ? 'mock' : 'none';
-  } else {
+  const forceMocks = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
+
+  if (!forceMocks) {
     try {
       const all = await getMovies();
       movie = all.find((m) => m.id === movieId) ?? null;
-      if (movie) {
-        showtimes = await getShowtimes(movieId);
+      showtimes = await getShowtimes(movieId);
+      if (showtimes.length > 0 || movie) {
+        source = 'live';
       }
-      source = 'live';
     } catch (err) {
       loadError = err instanceof ApiRequestError ? err.message : 'Could not load showtimes.';
     }
   }
 
-  if (loadError) {
+  if ((!movie || showtimes.length === 0) && (forceMocks || loadError || !movie)) {
+    const mockMovie = getMockMovies().find((m) => m.id === movieId) ?? null;
+    if (mockMovie) {
+      movie = movie || mockMovie;
+      if (showtimes.length === 0) {
+        showtimes = getMockShowtimes(movieId);
+      }
+      source = 'mock';
+      loadError = null;
+    }
+  }
+
+  if (loadError && !movie) {
     return <LoadError message={loadError} />;
   }
 
@@ -106,11 +114,7 @@ function FilmHeader({ movie, source }: { movie: Movie; source: 'live' | 'mock' |
             <span className="inline-block rounded-full bg-accent/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-accent mr-2 align-middle font-semibold">
               Demo
             </span>
-            Sample times for the UI demo. Set{' '}
-            <code className="rounded bg-surface-hi px-1.5 py-0.5 font-mono text-[11px] text-ink">
-              NEXT_PUBLIC_USE_MOCKS=false
-            </code>{' '}
-            to use the live API.
+            Showing demo schedule. Live backend will connect automatically when available.
           </p>
         )}
       </div>
@@ -139,7 +143,7 @@ function Poster({ movie }: { movie: Movie }) {
 
   return (
     <div
-      className="poster-fallback relative shrink-0 w-32 sm:w-44 rounded-2xl border border-line flex items-center justify-center"
+      className="poster-fallback relative shrink-0 w-32 sm:w-44 rounded-2xl border border-line flex items-center justify-center bg-slate-50"
       style={ratioStyle}
       aria-hidden="true"
     >
@@ -190,7 +194,6 @@ function groupShowtimes(showtimes: Showtime[]): Group[] {
     }
   }
 
-  // Sort each venue's shows by start time so the earliest is first.
   for (const g of byVenue.values()) {
     g.items.sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
   }
@@ -291,8 +294,7 @@ function EmptyShowtimes() {
       <p className="text-xs uppercase tracking-[0.25em] text-muted">No upcoming shows</p>
       <h2 className="font-display text-xl text-ink mt-2 mb-2 font-semibold">Check back tomorrow</h2>
       <p className="text-sm text-muted max-w-md mx-auto">
-        New showtimes are added overnight. If you&apos;d like to be notified, pick the film again from
-        the home page and we&apos;ll show the freshest schedule.
+        New showtimes are added overnight. Select another film or try again later.
       </p>
       <Link
         href="/"
@@ -362,8 +364,6 @@ function NotFound() {
     </div>
   );
 }
-
-/* -- Helpers --------------------------------------------------------------- */
 
 function initials(title: string): string {
   const words = title

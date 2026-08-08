@@ -18,9 +18,11 @@ import type {
   Showtime,
 } from './types';
 
+const NEXT_PUBLIC_BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 const BASE = typeof window === 'undefined'
   ? (process.env.INTERNAL_API_URL || 'http://api:3000/api')
-  : '/api';
+  : `${NEXT_PUBLIC_BASE_PATH}/api`;
 
 export class ApiRequestError extends Error {
   readonly status: number;

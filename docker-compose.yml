@@ -117,6 +117,7 @@ services:
       args:
         # Same-origin through the proxy — the frontend never learns the API host
         VITE_API_BASE_URL: /api
+        NEXT_PUBLIC_BASE_PATH: /proxy/8080
     restart: unless-stopped
 
   # ── Infrastructure ──────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '../components/AppLink';
 import { Inter, Outfit } from 'next/font/google';
 
 import './globals.css';

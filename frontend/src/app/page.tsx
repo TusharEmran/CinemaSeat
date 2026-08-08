@@ -1,4 +1,5 @@
-import Link from 'next/link';
+import Link from '../components/AppLink';
+import { prefixHref } from '../lib/basePath';
 
 export const dynamic = 'force-dynamic';
 
@@ -207,7 +208,7 @@ function LoadError({ message }: { message: string }) {
       </h1>
       <p className="text-muted mb-8">{message}</p>
       <a
-        href="/"
+        href={prefixHref('/')}
         className="inline-flex items-center justify-center rounded-xl border border-line bg-white px-6 py-2.5 text-sm font-medium text-ink hover:border-accent/30 hover:bg-accent-soft transition-colors duration-200 cursor-pointer shadow-sm"
       >
         Try again

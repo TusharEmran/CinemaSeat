@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from './AppLink';
 
 import type { Movie } from '../api/types';
 

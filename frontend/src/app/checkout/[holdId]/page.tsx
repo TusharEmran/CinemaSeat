@@ -1,11 +1,12 @@
 'use client';
 
 import { use, useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
+import Link from '../../../components/AppLink';
 import { useRouter } from 'next/navigation';
 
 import { ApiRequestError, createBooking, pay, sendOtp, verifyOtp } from '../../../api/client';
 import { formatMinor } from '../../../api/types';
+import { prefixHref } from '../../../lib/basePath';
 
 interface PageProps {
   params: Promise<{ holdId: string }>;
@@ -152,14 +153,14 @@ export default function CheckoutPage({ params }: PageProps) {
 
     try {
       if (forceMocks) {
-        router.push(`/booking/${bookingRef}`);
+        router.push(prefixHref(`/booking/${bookingRef}`));
       } else {
         try {
           await pay(bookingRef);
         } catch {
           // ignore error if payment initiates asynchronously
         }
-        router.push(`/booking/${bookingRef}`);
+        router.push(prefixHref(`/booking/${bookingRef}`));
       }
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Payment request failed. Please try again.');

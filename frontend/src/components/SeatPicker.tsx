@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ApiRequestError, getSeatMap, holdSeats } from '../api/client';
 import type { ApiError, Hold, Seat, SeatMap } from '../api/types';
 import { formatMinor } from '../api/types';
+import { prefixHref } from '../lib/basePath';
 
 /*
  * Interactive seat picker — white theme edition.
@@ -127,7 +128,7 @@ export function SeatPicker({ initialSeatMap }: { initialSeatMap: SeatMap }) {
     });
 
     if (result.held === true) {
-      router.push(`/checkout/${result.hold.hold_id}`);
+      router.push(prefixHref(`/checkout/${result.hold.hold_id}`));
       return;
     }
 

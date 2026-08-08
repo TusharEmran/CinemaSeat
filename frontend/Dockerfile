@@ -14,6 +14,7 @@ RUN npm run build
 FROM node:22-alpine AS runtime
 WORKDIR /app
 COPY --from=build /app/package.json /app/package-lock.json* ./
+COPY --from=build /app/next.config.mjs ./
 COPY --from=build /app/.next /app/.next
 COPY --from=build /app/node_modules /app/node_modules
 ENV PORT=80

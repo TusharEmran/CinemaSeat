@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  assetPrefix: '/proxy/8080',
   async rewrites() {
     return [
       {

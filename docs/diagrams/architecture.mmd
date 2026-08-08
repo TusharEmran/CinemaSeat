@@ -1,0 +1,38 @@
+%% Render: https://mermaid.live  — or paste straight into README.md in a ```mermaid fence.
+%% Keep it simple enough to explain out loud. A fancy diagram you cannot defend
+%% is worse than a plain one you can.
+
+flowchart TB
+    user([Browser])
+
+    subgraph edge["Edge"]
+        nginx["nginx<br/>one base URL :8080<br/>rate limit · round-robin"]
+    end
+
+    subgraph app["Application — one image, two roles"]
+        api["api ×N · Fastify<br/>stateless<br/>catalog │ seating │ booking │ payment"]
+        worker["worker<br/>hold-expiry sweep<br/>payment reconciler"]
+    end
+
+    subgraph data["Data"]
+        pg[("Postgres<br/><b>source of truth</b><br/>seat_claims · bookings<br/>payments · callback_events")]
+        redis[("Redis<br/>seat-map cache<br/>rate limits<br/><i>never truth</i>")]
+    end
+
+    gw["mock-gateway :9000<br/>charge · refund · otp<br/><i>provided, misbehaves by spec</i>"]
+
+    user -->|"GET /seatmap<br/>POST /holds"| nginx
+    nginx --> api
+    api -->|"INSERT ... ON CONFLICT<br/>DO NOTHING"| pg
+    api -.->|"cache read, tolerate failure"| redis
+    api -->|"POST /charge<br/>fire and forget"| gw
+    gw -->|"callback 2-15s later<br/>8% twice"| nginx
+    worker -->|"sweep expired holds<br/>reconcile PENDING"| pg
+    worker -.->|"recover when it returns"| gw
+
+    classDef truth fill:#1d4ed8,stroke:#1e3a8a,color:#fff
+    classDef cache fill:#64748b,stroke:#334155,color:#fff
+    classDef ext   fill:#b45309,stroke:#78350f,color:#fff
+    class pg truth
+    class redis cache
+    class gw ext

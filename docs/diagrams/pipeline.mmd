@@ -1,0 +1,34 @@
+%% CI/CD pipeline. Required in the documentation for Milestone 3.
+
+flowchart LR
+    subgraph dev["Develop"]
+        branch["feature branch"]
+        pr["Pull request"]
+    end
+
+    subgraph ci["CI — on PR and on push to main"]
+        changes["paths-filter<br/><i>change-aware:<br/>docs-only PR skips backend</i>"]
+        lint["lint + typecheck"]
+        unit["unit tests"]
+        integ["integration tests<br/>real Postgres + Redis<br/>(testcontainers)"]
+        smoke["compose smoke<br/>docker compose up --wait<br/>+ gateway-down check"]
+        gate{"all green?"}
+    end
+
+    subgraph cd["CD — pushes to main only"]
+        build["build + push images<br/>tagged :sha and :latest"]
+        migrate["run migrations<br/>on their own, first"]
+        roll["rolling restart<br/>one replica at a time"]
+        verify["smoke the deployed URL"]
+    end
+
+    prod(["Poridhi VM / AWS<br/>nginx + api ×2 + worker"])
+
+    branch --> pr --> changes --> lint --> unit --> integ --> smoke --> gate
+    gate -->|no| blocked["merge blocked<br/><i>branch protection</i>"]
+    gate -->|yes| merge["merge to main"]
+    merge --> build --> migrate --> roll --> verify --> prod
+    verify -.->|fails| rollback["redeploy previous sha"]
+
+    classDef bad fill:#b91c1c,stroke:#7f1d1d,color:#fff
+    class blocked,rollback bad

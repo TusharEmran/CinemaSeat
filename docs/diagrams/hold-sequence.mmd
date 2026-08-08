@@ -1,0 +1,51 @@
+%% The path that must never double-book, and the path that must survive a
+%% gateway that lies. Two diagrams in one file because they are one story.
+
+sequenceDiagram
+    autonumber
+    participant A as User A
+    participant B as User B (99 others)
+    participant API as api
+    participant PG as Postgres
+    participant GW as gateway
+    participant W as worker
+
+    Note over A,B: 8:00:01 — everyone taps seat F12
+
+    par The burst
+        A->>API: POST /api/holds  F12
+        API->>PG: INSERT seat_claims ON CONFLICT DO NOTHING
+        PG-->>API: 1 row
+        API-->>A: 201  hold_id, expires_at
+    and
+        B->>API: POST /api/holds  F12
+        API->>PG: INSERT seat_claims ON CONFLICT DO NOTHING
+        PG-->>API: 0 rows
+        API-->>B: 409 SEAT_UNAVAILABLE
+    end
+
+    Note over PG: the unique index decided it.<br/>No lock, no lease, no read-then-write gap.
+
+    A->>API: POST /api/bookings
+    A->>API: POST /api/bookings/:ref/pay
+    API->>PG: INSERT payments (PENDING) — BEFORE calling charge
+    API->>GW: POST /charge (no await)
+    API-->>A: 202 Accepted
+
+    Note over GW: 2–15s pass. 8% of the time,<br/>this next message arrives twice.
+
+    GW->>API: callback evt_001 SUCCEEDED
+    API->>PG: INSERT callback_events ON CONFLICT (event_id) DO NOTHING
+    PG-->>API: 1 row → apply
+    API->>PG: seat_claims HELD → BOOKED, booking CONFIRMED
+    API-->>GW: 200
+
+    GW->>API: callback evt_001 (duplicate)
+    API->>PG: INSERT callback_events ON CONFLICT DO NOTHING
+    PG-->>API: 0 rows → DUPLICATE
+    API-->>GW: 200
+    Note over API,PG: No second payment.<br/>No second confirmation.<br/>Revenue counted once.
+
+    Note over A,W: The other ending — nobody pays
+    W->>PG: UPDATE seat_claims SET state='EXPIRED'<br/>WHERE state='HELD' AND expires_at < now()
+    Note over PG: seat is green again.<br/>Readers already treated it as free —<br/>the sweeper just makes the map honest.

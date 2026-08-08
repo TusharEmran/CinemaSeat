@@ -1,0 +1,2 @@
+/** Bookings SQL. */
+export {};

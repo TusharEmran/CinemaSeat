@@ -1,0 +1,30 @@
+node_modules/
+dist/
+build/
+coverage/
+.vite/
+
+.env
+.env.local
+!.env.example
+
+*.log
+npm-debug.log*
+
+.DS_Store
+Thumbs.db
+
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Load-test output — commit the summaries in docs/proof/ instead, not raw dumps
+load/results/*
+!load/results/.gitkeep
+
+# Terraform
+infra/terraform/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example

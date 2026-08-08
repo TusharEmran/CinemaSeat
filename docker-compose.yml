@@ -1,0 +1,157 @@
+# CinemaSeat — full stack, clean clone to running system.
+#
+#   docker compose up --build
+#
+# No .env file required: every variable below has an inline default so a judge
+# can clone and run with zero manual steps. Override any of them via a .env file
+# (see .env.example) or the shell environment.
+#
+# Judges' short-TTL run for Scenario B:
+#   HOLD_TTL_SECONDS=15 docker compose up --build
+
+name: cinemaseat
+
+services:
+  # ── Edge ────────────────────────────────────────────────────────────────────
+  # Single base URL for the frontend and for judges. Everything is behind here.
+  #   http://localhost:8080/          -> frontend
+  #   http://localhost:8080/api/...   -> backend API
+  proxy:
+    build: ./nginx
+    ports:
+      - "${PROXY_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
+    restart: unless-stopped
+
+  # ── Application ─────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      target: runtime
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://cinema:cinema@postgres:5432/cinemaseat
+      REDIS_URL: redis://redis:6379
+      # Judging hook #2 — read from the environment, never hardcoded.
+      HOLD_TTL_SECONDS: ${HOLD_TTL_SECONDS:-120}
+      GATEWAY_BASE_URL: http://gateway:9000
+      # Where the gateway calls us back. Must be reachable from the gateway
+      # container, so it is a compose service name, not localhost.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://api:3000}
+      GATEWAY_TIMEOUT_MS: ${GATEWAY_TIMEOUT_MS:-3000}
+      GATEWAY_CALLBACK_SECRET: ${GATEWAY_CALLBACK_SECRET:-dev-callback-secret}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-300}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # Judging hook #1 — /health must answer <1s and stay green when the
+      # gateway is down, so it never touches the gateway.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      replicas: ${API_REPLICAS:-2}
+
+  # Separate container, same image. Sweeps expired holds and reconciles payments
+  # whose callback never arrived. Kept out of the API process so a slow sweep
+  # can never block a hold request.
+  worker:
+    build:
+      context: ./backend
+      target: runtime
+    command: ["node", "dist/worker.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://cinema:cinema@postgres:5432/cinemaseat
+      REDIS_URL: redis://redis:6379
+      HOLD_TTL_SECONDS: ${HOLD_TTL_SECONDS:-120}
+      GATEWAY_BASE_URL: http://gateway:9000
+      SWEEP_INTERVAL_MS: ${SWEEP_INTERVAL_MS:-1000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # Runs migrations then seeds movies/theatres/showtimes/seats. Exits 0.
+  # api and worker wait on service_completed_successfully, so there is no
+  # "run this command first" step anywhere.
+  migrate:
+    build:
+      context: ./backend
+      target: runtime
+    command: ["node", "dist/db/bootstrap.js"]
+    environment:
+      DATABASE_URL: postgres://cinema:cinema@postgres:5432/cinemaseat
+      SEED_ON_BOOT: ${SEED_ON_BOOT:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        # Same-origin through the proxy — the frontend never learns the API host.
+        VITE_API_BASE_URL: /api
+    restart: unless-stopped
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cinema
+      POSTGRES_PASSWORD: cinema
+      POSTGRES_DB: cinemaseat
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cinema -d cinemaseat"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "no", "--save", ""]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  # ── Provided gateway (do not replace with your own mock) ────────────────────
+  gateway:
+    image: asifmahmoud414/mock-gateway:latest
+    ports:
+      - "${GATEWAY_PORT:-9000}:9000"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
